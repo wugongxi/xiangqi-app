@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+dist/
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+
+# IDE 与系统文件
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# 日志与临时文件
+npm-debug.log*
+*.log
+test-e2e.mjs
+test-horse.mjs
+test-levels.mjs
+*.apk
