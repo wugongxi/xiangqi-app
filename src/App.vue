@@ -459,7 +459,7 @@ onMounted(async () => {
   worker.onmessageerror = onWorkerError
   setupKingsAndHash(g)
   syncFromEngine()
-  // 启动 3 秒后自动检查更新, 之后每 3 小时一次
+  // 打开后立即检查更新, 之后每 3 小时一次
   stopUpdateWatch = startUpdateWatcher(onUpdateFound)
   // 监听原生下载进度
   if (Capacitor.isNativePlatform()) {
@@ -600,9 +600,9 @@ onBeforeUnmount(() => {
       </transition>
     </template>
 
-    <!-- 应用内更新弹窗 (根级: 菜单/对局/关卡页均可弹出) -->
+    <!-- 应用内更新弹窗 (根级: 菜单/对局/关卡页均可弹出; 仅按钮可关闭, 点外部不消失) -->
     <transition name="fade">
-      <div v-if="updateVisible && updateInfo" class="overlay" @click.self="dismissUpdate">
+      <div v-if="updateVisible && updateInfo" class="overlay">
         <div class="modal update-modal">
           <div class="update-header">
             <div class="update-badge">🎉 发现新版本</div>

@@ -1,5 +1,5 @@
 // 应用内版本更新检测 (App Harbor: app.ffxx.top)
-// 用法: startUpdateWatcher(info => { ... }) — 启动 3 秒后检查一次, 之后每 3 小时一次
+// 用法: startUpdateWatcher(info => { ... }) — 打开后立即检查一次, 之后每 3 小时一次
 // ⚠️ 每次发版必须同步修改 APP_VERSION / APP_BUILD 和 android/app/build.gradle 的 versionName/versionCode
 
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
@@ -8,11 +8,11 @@ import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
 export const AppInstaller = registerPlugin('AppInstaller')
 
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.8'
-export const APP_BUILD = 9
+export const APP_VERSION = '1.0.9'
+export const APP_BUILD = 10
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
-const FIRST_DELAY = 3000                  // 启动后首次检查延迟
+const FIRST_DELAY = 0                     // 打开后立即首次检查
 
 const PARAMS = {
   app: 'xiangqi',
