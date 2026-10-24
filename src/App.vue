@@ -638,13 +638,13 @@ onBeforeUnmount(() => {
   align-items: center;
   max-width: 620px;
   margin: 0 auto;
-  /* 安全区避让: WebView 全屏铺满, 内容通过安全区变量避让刘海/系统栏;
-     --safe-* 由原生注入, env() 兜底 (浏览器/未注入时) */
+  /* 安全区避让: 应用内只信原生注入的 --safe-* (恒定值);
+     env() 仅作浏览器兜底 — Android WebView 的 env 随系统栏显隐漂移, 参与计算会导致间距忽大忽小 */
   padding:
-    calc(12px + max(var(--safe-top, 0px), env(safe-area-inset-top, 0px)))
-    max(16px, max(var(--safe-right, 0px), env(safe-area-inset-right, 0px)))
-    calc(24px + max(var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))
-    max(16px, max(var(--safe-left, 0px), env(safe-area-inset-left, 0px)));
+    calc(12px + var(--safe-top, env(safe-area-inset-top, 0px)))
+    max(16px, var(--safe-right, env(safe-area-inset-right, 0px)))
+    calc(24px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))
+    max(16px, var(--safe-left, env(safe-area-inset-left, 0px)));
 }
 /* 菜单 */
 .menu { padding-top: 18vh; text-align: center; width: 100%; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; padding-bottom: 26px; }

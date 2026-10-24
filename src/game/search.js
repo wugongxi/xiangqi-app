@@ -199,7 +199,7 @@ export function searchBestMove(g, options = {}) {
 // 难度配置 (旧"困难"深度 6/2.5s 实测偏弱, 重排为递进梯度:
 // 新"简单"=旧"困难", "中等"/"困难"在此基础上加深搜索)
 export const DIFFICULTY = {
-  1: { name: '入门', maxDepth: 1, timeMs: 200, randomness: 260 },
+  1: { name: '入门', maxDepth: 5, timeMs: 1500, randomness: 90 },
   2: { name: '简单', maxDepth: 6, timeMs: 2500, randomness: 0 },
   3: { name: '中等', maxDepth: 8, timeMs: 5000, randomness: 0 },
   4: { name: '困难', maxDepth: 12, timeMs: 9000, randomness: 0 },

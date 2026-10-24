@@ -30,6 +30,8 @@ public class MainActivity extends BridgeActivity {
   public void onResume() {
     super.onResume();
     hideSystemBars();
+    // 强制重派发 insets, 让安全区 CSS 变量在页面(重)加载后也能立刻注入
+    ViewCompat.requestApplyInsets(findViewById(android.R.id.content));
   }
 
   @Override
