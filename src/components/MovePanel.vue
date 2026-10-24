@@ -33,7 +33,7 @@ watch(() => props.moves.length, () => {
   <div class="panel">
     <div class="panel-title">
       <span>棋谱</span>
-      <button class="copy" @click="$emit('jump', -2)" title="复制棋谱">复制</button>
+      <button class="copy" @click="$emit('jump', -2)" title="查看全部棋谱">查看</button>
     </div>
     <div ref="listEl" class="list">
       <div

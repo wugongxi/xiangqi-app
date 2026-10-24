@@ -106,6 +106,22 @@ async function manualCheck() {
 const playerTurn = computed(() => turn.value === playerSide.value && !gameOver.value && !reviewMode.value)
 const flipped = computed(() => playerSide.value === BLACK)
 const difficultyName = computed(() => ({ 1: '入门', 2: '简单', 3: '中等', 4: '困难' }[difficulty.value]))
+// 对局页锁定视口高度(不可滚动); 关卡选择页/主菜单保持可滚动
+const inGame = computed(() => mode.value === 'free' || (mode.value === 'levels' && !!currentLevel.value))
+
+// ---------- 棋谱查看弹窗 ----------
+const movesVisible = ref(false)
+const moveRows = computed(() => {
+  const out = []
+  for (let i = 0; i < moveList.value.length; i += 2) {
+    out.push({
+      n: i / 2 + 1,
+      red: moveList.value[i]?.notation || '',
+      black: moveList.value[i + 1]?.notation || '',
+    })
+  }
+  return out
+})
 
 // ---------- 复盘 ----------
 const reviewMode = ref(false)
@@ -137,7 +153,7 @@ function reviewStep(d) {
   reviewPly.value = Math.max(0, Math.min(reviewPly.value + d, moveList.value.length))
 }
 function onJump(ply) {
-  if (ply === -2) { copyRecord(); return }
+  if (ply === -2) { movesVisible.value = true; return }
   if (!reviewMode.value) enterReview(ply)
   else reviewPly.value = Math.max(0, Math.min(ply, moveList.value.length))
 }
@@ -150,7 +166,10 @@ async function copyRecord() {
     lines.push(`${n}. ${red} ${black}`.trim())
   }
   const text = `${gameOver.value ? '对局结果: ' + (gameOver.value.win ? '红胜' : playerSide.value === RED ? '黑胜' : '红负') : '对局中'}\n` + lines.join('\n')
-  try { await navigator.clipboard.writeText(text); alert('棋谱已复制到剪贴板') } catch (e) { /* 忽略 */ }
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('棋谱已复制到剪贴板')
+  } catch (e) { /* 忽略 */ }
 }
 
 // ---------- 音效 ----------
@@ -247,7 +266,7 @@ function applyMove(from, to) {
   const captured = g.board[to]
   makeMove(g, from, to)
   moveList.value.push({ from, to, captured, notation })
-  lastMove.value = { from, to }
+  lastMove.value = { from, to, notation }
   selected.value = -1
   hintMoves.value = []
   syncFromEngine()
@@ -405,7 +424,7 @@ function undo() {
   selected.value = -1
   hintMoves.value = []
   lastMove.value = moveList.value.length
-    ? { from: moveList.value[moveList.value.length - 1].from, to: moveList.value[moveList.value.length - 1].to }
+    ? { from: moveList.value[moveList.value.length - 1].from, to: moveList.value[moveList.value.length - 1].to, notation: moveList.value[moveList.value.length - 1].notation }
     : null
   syncFromEngine()
   if (mode.value === 'free') saveGame()
@@ -445,7 +464,7 @@ function tryRestore() {
     // 回放起点: 若有完整棋谱则从标准开局重建
     initialArr = initialBoard()
     lastMove.value = moveList.value.length
-      ? { from: moveList.value[moveList.value.length - 1].from, to: moveList.value[moveList.value.length - 1].to }
+      ? { from: moveList.value[moveList.value.length - 1].from, to: moveList.value[moveList.value.length - 1].to, notation: moveList.value[moveList.value.length - 1].notation }
       : null
     syncFromEngine()
     if (g.side !== playerSide.value) askAI()
@@ -488,7 +507,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'in-game': inGame }">
     <!-- 主菜单 -->
     <div v-if="mode === 'menu'" class="menu">
       <h1 class="menu-title">中国象棋</h1>
@@ -624,6 +643,27 @@ onBeforeUnmount(() => {
       </div>
     </transition>
 
+    <!-- 棋谱查看弹窗 (全部着法, 底部可复制) -->
+    <transition name="fade">
+      <div v-if="movesVisible" class="overlay" @click.self="movesVisible = false">
+        <div class="modal moves-modal">
+          <div class="modal-title">棋谱</div>
+          <div class="moves-list">
+            <div v-if="!moveList.length" class="moves-empty">还没有着法</div>
+            <div v-for="r in moveRows" :key="r.n" class="moves-row">
+              <span class="moves-num">{{ r.n }}.</span>
+              <span class="moves-red">{{ r.red }}</span>
+              <span v-if="r.black" class="moves-black">{{ r.black }}</span>
+            </div>
+          </div>
+          <div class="modal-actions moves-actions">
+            <button class="btn primary" @click="copyRecord">复制棋谱</button>
+            <button class="btn" @click="movesVisible = false">关闭</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- 全局 toast -->
     <transition name="fade">
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -634,6 +674,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .app {
   min-height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -646,6 +687,12 @@ onBeforeUnmount(() => {
     max(16px, var(--safe-right, env(safe-area-inset-right, 0px)))
     calc(24px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))
     max(16px, var(--safe-left, env(safe-area-inset-left, 0px)));
+}
+/* 对局页: 锁定视口高度, 内容不可滚动, 棋盘自适应缩放填充剩余空间 */
+.app.in-game {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 /* 菜单 */
 .menu { padding-top: 18vh; text-align: center; width: 100%; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; padding-bottom: 26px; }
@@ -731,7 +778,14 @@ onBeforeUnmount(() => {
   from { transform: translateX(-50%) scale(1); opacity: 0.85; }
   to { transform: translateX(-50%) scale(1.12); opacity: 1; }
 }
-.board-wrap { width: 100%; }
+.board-wrap {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0; /* 允许被压缩, 棋盘按剩余高度缩放 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* 状态条 */
 .status-bar {
@@ -780,7 +834,22 @@ onBeforeUnmount(() => {
   background: #fff;
   font-size: 13px;
 }
-.move-panel { width: 100%; max-width: 560px; margin-top: 14px; }
+.move-panel { width: 100%; max-width: 560px; margin-top: 14px; min-height: 0; }
+.move-panel :deep(.list) { max-height: 110px; }
+
+/* 棋谱查看弹窗 */
+.moves-modal { max-width: 420px; width: calc(100vw - 48px); padding: 24px 20px 20px; }
+.moves-list {
+  max-height: 56vh; overflow-y: auto; text-align: left;
+  background: #f8f0dc; border-radius: 10px; padding: 10px 14px; margin-bottom: 4px;
+  font-family: "KaiTi", "STKaiti", serif;
+}
+.moves-row { display: flex; gap: 10px; align-items: center; padding: 3px 0; font-size: 14px; }
+.moves-num { color: #b0a48c; min-width: 28px; font-size: 12px; font-family: sans-serif; }
+.moves-red { color: #a33022; min-width: 64px; }
+.moves-black { color: #333; min-width: 64px; }
+.moves-empty { color: #b0a48c; font-size: 13px; text-align: center; padding: 16px 0; }
+.moves-actions { margin-top: 14px; }
 
 /* 弹窗 */
 .overlay {

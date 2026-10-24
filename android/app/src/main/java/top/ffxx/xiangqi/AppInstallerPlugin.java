@@ -68,7 +68,7 @@ public class AppInstallerPlugin extends Plugin {
     Insets cut = ViewCompat.getRootWindowInsets(getBridge().getWebView())
         .getInsets(WindowInsetsCompat.Type.displayCutout());
     JSObject ret = new JSObject();
-    ret.put("top", Math.max(cut.top, MainActivity.getStatusBarHeight(getContext())));
+    ret.put("top", cut.top);
     ret.put("bottom", cut.bottom);
     ret.put("left", cut.left);
     ret.put("right", cut.right);

@@ -75,7 +75,9 @@ public class MainActivity extends BridgeActivity {
     ViewGroup content = findViewById(android.R.id.content);
     ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
       Insets cut = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
-      injectSafeArea(Math.max(cut.top, getStatusBarHeight(this)), cut.bottom, cut.left, cut.right);
+      // 顶部避让只取刘海/打孔 inset(恒定值): 状态栏平时隐藏, 叠加其高度只会
+      // 造成过大的空白; 瞬态系统栏是覆盖层, 无需内容避让
+      injectSafeArea(cut.top, cut.bottom, cut.left, cut.right);
       return WindowInsetsCompat.CONSUMED;
     });
     ViewCompat.requestApplyInsets(content);
