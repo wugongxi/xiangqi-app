@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    registerPlugin(AppInstallerPlugin.class);
     applyThemeColors();
     setupSafeArea();
     hideSystemBars();
@@ -37,13 +38,15 @@ public class MainActivity extends BridgeActivity {
 
   /**
    * 主题色统一: 沉浸式全屏下安全区 padding 露出的是窗口背景,
-   * 系统默认白色会与 App 米黄底色割裂, 统一染成米黄色 (#f3dfb6)。
+   * 颜色必须与网页背景渐变 (160deg, #faf6ee → #f0e6d2) 对齐,
+   * 否则状态栏/导航栏浮现时会与页面内容形成明显色差。
    */
   private void applyThemeColors() {
-    int bg = 0xFFF3DFB6;
-    getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(bg));
-    getWindow().setStatusBarColor(bg);
-    getWindow().setNavigationBarColor(bg);
+    int topColor = 0xFFFAF6EE;    // 页面渐变顶部色 → 状态栏
+    int bottomColor = 0xFFF0E6D2; // 页面渐变底部色 → 导航栏
+    getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(topColor));
+    getWindow().setStatusBarColor(topColor);
+    getWindow().setNavigationBarColor(bottomColor);
   }
 
   /**

@@ -2,11 +2,14 @@
 // 用法: startUpdateWatcher(info => { ... }) — 启动 3 秒后检查一次, 之后每 3 小时一次
 // ⚠️ 每次发版必须同步修改 APP_VERSION / APP_BUILD 和 android/app/build.gradle 的 versionName/versionCode
 
-import { Capacitor, CapacitorHttp } from '@capacitor/core'
+import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
+
+// 原生插件: 应用内下载 APK 并触发系统安装 (仅原生环境可用)
+export const AppInstaller = registerPlugin('AppInstaller')
 
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.4'
-export const APP_BUILD = 5
+export const APP_VERSION = '1.0.5'
+export const APP_BUILD = 6
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
 const FIRST_DELAY = 3000                  // 启动后首次检查延迟

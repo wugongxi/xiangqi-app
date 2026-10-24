@@ -9,7 +9,8 @@ import {
 } from './game/xiangqi.js'
 import { moveToNotation } from './game/notation.js'
 import { LEVELS, buildLevelBoard, loadProgress, saveProgress } from './game/levels.js'
-import { APP_VERSION, APP_BUILD, startUpdateWatcher, checkForUpdate } from './update.js'
+import { Capacitor } from '@capacitor/core'
+import { APP_VERSION, APP_BUILD, startUpdateWatcher, checkForUpdate, AppInstaller } from './update.js'
 
 // ---------- 顶层模式 ----------
 const mode = ref('menu') // menu | free | levels
@@ -42,7 +43,8 @@ let stopUpdateWatch = null
 // ---------- 应用内更新 ----------
 const updateInfo = ref(null)      // {version, build, notes, forceUpdate, url, size}
 const updateVisible = ref(false)
-const updateLoading = ref(false)
+const updateLoading = ref(false)   // 正在下载
+const downloadProgress = ref(0)    // 下载进度 0-100
 
 function onUpdateFound(info) {
   updateInfo.value = info
@@ -54,15 +56,29 @@ function dismissUpdate() {
   updateVisible.value = false
 }
 
+// 应用内更新: 原生环境直接下载 APK 并拉起系统安装器;
+// 浏览器环境退回 window.open
 async function applyUpdate() {
   const info = updateInfo.value
-  if (!info?.url) return
+  if (!info?.url || updateLoading.value) return
+  if (!Capacitor.isNativePlatform()) {
+    window.open(info.url, '_blank')
+    return
+  }
   updateLoading.value = true
+  downloadProgress.value = 0
   try {
-    // 打开系统浏览器下载 APK, 用户点击安装即可
+    await AppInstaller.downloadAndInstall({ url: info.url })
+    showToast('下载完成，已启动安装', 3000)
+  } catch (e) {
+    console.error('[Update] 应用内下载失败, 退回浏览器:', e)
+    showToast('应用内下载失败，改用浏览器下载')
     window.open(info.url, '_blank')
   } finally {
-    setTimeout(() => { updateLoading.value = false }, 800)
+    setTimeout(() => {
+      updateLoading.value = false
+      downloadProgress.value = 0
+    }, 1500)
   }
 }
 
@@ -444,6 +460,12 @@ onMounted(() => {
   syncFromEngine()
   // 启动 3 秒后自动检查更新, 之后每 3 小时一次
   stopUpdateWatch = startUpdateWatcher(onUpdateFound)
+  // 监听原生下载进度
+  if (Capacitor.isNativePlatform()) {
+    AppInstaller.addListener('progress', (e) => {
+      downloadProgress.value = e?.progress ?? 0
+    })
+  }
 })
 onBeforeUnmount(() => {
   clearTimeout(checkTimer)
@@ -581,7 +603,9 @@ onBeforeUnmount(() => {
             <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
             <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
             <div class="modal-actions">
-              <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
+              <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">
+                {{ updateLoading ? (downloadProgress > 0 ? `下载中 ${downloadProgress}%` : '准备下载…') : '立即更新' }}
+              </button>
               <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
             </div>
           </div>
