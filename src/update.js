@@ -3,8 +3,8 @@
 // ⚠️ 每次发版必须同步修改 APP_VERSION / APP_BUILD 和 android/app/build.gradle 的 versionName/versionCode
 
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.1'
-export const APP_BUILD = 2
+export const APP_VERSION = '1.0.2'
+export const APP_BUILD = 3
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
 const FIRST_DELAY = 3000                  // 启动后首次检查延迟
