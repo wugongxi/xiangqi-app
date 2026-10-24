@@ -163,8 +163,13 @@ export function searchBestMove(g, options = {}) {
 
   let bestMove = 0, bestScore = 0, completedDepth = 0
   const rootMoves = genMoves(g)
+  const t0 = Date.now()
 
   for (let depth = 1; depth <= maxDepth; depth++) {
+    // 时间不是目标而是安全上限: 按上一层耗时估算(节点数每层约3-4倍),
+    // 明显不够搜完下一层就不再开搜, 正常情况搜完目标深度即刻返回
+    const elapsed = Date.now() - t0
+    if (depth > 1 && elapsed * 3 > deadline - Date.now()) break
     try {
       const scored = []
       let alpha = -INF
@@ -186,8 +191,6 @@ export function searchBestMove(g, options = {}) {
       bestMove = localBest
       bestScore = localScore
       completedDepth = depth
-      // 提前完成且剩余时间不足以再搜一层
-      if (Date.now() > deadline - (deadline - (deadline - timeMs)) * 0.4) break
     } catch (e) {
       if (e === TIMEOUT) break
       throw e
@@ -196,11 +199,11 @@ export function searchBestMove(g, options = {}) {
   return { move: bestMove, score: bestScore, depth: completedDepth, nodes }
 }
 
-// 难度配置 (旧"困难"深度 6/2.5s 实测偏弱, 重排为递进梯度:
-// 新"简单"=旧"困难", "中等"/"困难"在此基础上加深搜索)
+// 难度配置: 棋力由 maxDepth 决定, timeMs 仅是防极端局面的安全上限
+// (正常都会先搜完目标深度返回; 实际耗时就是不等的, 不做固定延时)
 export const DIFFICULTY = {
-  1: { name: '入门', maxDepth: 5, timeMs: 1500, randomness: 90 },
-  2: { name: '简单', maxDepth: 6, timeMs: 2500, randomness: 0 },
-  3: { name: '中等', maxDepth: 8, timeMs: 5000, randomness: 0 },
-  4: { name: '困难', maxDepth: 12, timeMs: 9000, randomness: 0 },
+  1: { name: '入门', maxDepth: 5, timeMs: 6000, randomness: 90 },
+  2: { name: '简单', maxDepth: 6, timeMs: 15000, randomness: 0 },
+  3: { name: '中等', maxDepth: 7, timeMs: 25000, randomness: 0 },
+  4: { name: '困难', maxDepth: 9, timeMs: 30000, randomness: 0 },
 }

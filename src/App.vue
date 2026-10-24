@@ -9,6 +9,7 @@ import {
 } from './game/xiangqi.js'
 import { moveToNotation } from './game/notation.js'
 import { LEVELS, buildLevelBoard, loadProgress, saveProgress } from './game/levels.js'
+import { DIFFICULTY } from './game/search.js'
 import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, APP_BUILD, startUpdateWatcher, checkForUpdate, AppInstaller } from './update.js'
 
@@ -316,14 +317,14 @@ function askAI() {
   }, 100)
 
   const seq = ++searchSeq
-  // 看门狗: 超时未响应则用兜底着法接管, 避免永久卡在"思考中"
-  // (困难档引擎预算 9s, 看门狗须留足余量)
+  // 看门狗: 难度搜索预算 + 5s 余量, 超时未响应才用兜底着法接管
+  const budget = (DIFFICULTY[difficulty.value]?.timeMs || 10000) + 5000
   clearTimeout(watchdog)
   watchdog = setTimeout(() => {
     if (seq !== searchSeq) return
     console.warn('[AI] 搜索超时, 启用兜底着法')
     fallbackMove(seq)
-  }, 15000)
+  }, budget)
 
   // 注意: moveList 是 Vue 响应式 Proxy, 结构化克隆无法克隆 Proxy,
   // 直接 postMessage 会抛 DataCloneError, 必须转成纯数据
