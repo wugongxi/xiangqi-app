@@ -89,15 +89,21 @@ public class MainActivity extends BridgeActivity {
     return resId > 0 ? ctx.getResources().getDimensionPixelSize(resId) : 0;
   }
 
-  /** 把安全区数值写入网页 CSS 变量 (top 为恒定避让量, 不随系统栏显隐变化) */
+  /**
+   * 把安全区数值写入网页 CSS 变量。
+   * ⚠️ Android insets 是物理像素, CSS px 是密度无关像素, 必须除以屏幕密度换算,
+   * 否则高分屏上顶部空白会被放大 density 倍 (曾导致对局页顶部距离过大)。
+   */
   private void injectSafeArea(int top, int bottom, int left, int right) {
     if (bridge == null || bridge.getWebView() == null) return;
+    float density = getResources().getDisplayMetrics().density;
     final String js = String.format(
         "document.documentElement.style.setProperty('--safe-top','%dpx');"
             + "document.documentElement.style.setProperty('--safe-bottom','%dpx');"
             + "document.documentElement.style.setProperty('--safe-left','%dpx');"
             + "document.documentElement.style.setProperty('--safe-right','%dpx');",
-        top, bottom, left, right);
+        Math.round(top / density), Math.round(bottom / density),
+        Math.round(left / density), Math.round(right / density));
     bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
   }
 

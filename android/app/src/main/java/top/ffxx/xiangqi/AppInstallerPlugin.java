@@ -58,20 +58,21 @@ public class AppInstallerPlugin extends Plugin {
   }
 
   /**
-   * 返回当前窗口安全区 (px), 供网页加载后主动获取一次,
+   * 返回当前窗口安全区 (CSS px), 供网页加载后主动获取一次,
    * 与 MainActivity 的 CSS 变量注入双保险。
-   * top 取 max(刘海inset, 状态栏高度) 的恒定值, 与系统栏显隐解耦,
-   * 避免 select 弹窗等场景注入瞬态大值后卡住。
+   * ⚠️ Android insets 是物理像素, 必须除以屏幕密度换算为 CSS px,
+   * 否则高分屏上避让量被放大 density 倍。
    */
   @PluginMethod
   public void safeInsets(PluginCall call) {
     Insets cut = ViewCompat.getRootWindowInsets(getBridge().getWebView())
         .getInsets(WindowInsetsCompat.Type.displayCutout());
+    float density = getContext().getResources().getDisplayMetrics().density;
     JSObject ret = new JSObject();
-    ret.put("top", cut.top);
-    ret.put("bottom", cut.bottom);
-    ret.put("left", cut.left);
-    ret.put("right", cut.right);
+    ret.put("top", Math.round(cut.top / density));
+    ret.put("bottom", Math.round(cut.bottom / density));
+    ret.put("left", Math.round(cut.left / density));
+    ret.put("right", Math.round(cut.right / density));
     call.resolve(ret);
   }
 

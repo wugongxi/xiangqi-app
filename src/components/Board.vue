@@ -158,7 +158,7 @@ function drawAll(ts) {
     ctx.setLineDash([])
   }
   if (props.lastMove && !anim) {
-    const { from, to, notation } = props.lastMove
+    const { from, to } = props.lastMove
     // 落点: 高亮圆环圈住所走棋子
     const [tx, ty] = xy(to)
     ctx.strokeStyle = 'rgba(232,130,20,0.95)'
@@ -168,27 +168,6 @@ function drawAll(ts) {
     const [fx, fy] = xy(from)
     ctx.fillStyle = 'rgba(232,130,20,0.8)'
     ctx.beginPath(); ctx.arc(fx, fy, 6, 0, Math.PI * 2); ctx.fill()
-    // 着法文字徽标 (如"炮二平五"), 跟随落点并限制在棋盘内
-    if (notation) {
-      const fs = 17
-      ctx.font = `bold ${fs}px "KaiTi","STKaiti","SimSun",serif`
-      const tw = ctx.measureText(notation).width
-      const padX = 8, bh = fs + 8
-      let bx = tx - tw / 2 - padX
-      bx = Math.max(6, Math.min(W - tw - padX * 2 - 6, bx))
-      let by = ty - CELL * 0.5 - bh - 4
-      if (by < 4) by = ty + CELL * 0.5 + 4
-      ctx.fillStyle = 'rgba(80,50,15,0.85)'
-      ctx.beginPath()
-      const r = 6, x2 = bx + tw + padX * 2, y2 = by + bh
-      ctx.moveTo(bx + r, by)
-      ctx.arcTo(x2, by, x2, y2, r); ctx.arcTo(x2, y2, bx, y2, r)
-      ctx.arcTo(bx, y2, bx, by, r); ctx.arcTo(bx, by, x2, by, r)
-      ctx.fill()
-      ctx.fillStyle = '#ffe9b8'
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillText(notation, bx + padX + tw / 2, by + bh / 2 + 1)
-    }
   }
   for (const i of props.hintMoves) {
     const [x, y] = xy(i)
