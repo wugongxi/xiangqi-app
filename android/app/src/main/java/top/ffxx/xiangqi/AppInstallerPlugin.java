@@ -47,17 +47,18 @@ public class AppInstallerPlugin extends Plugin {
   /**
    * 返回当前窗口安全区 (px), 供网页加载后主动获取一次,
    * 与 MainActivity 的 CSS 变量注入双保险。
+   * top 取 max(刘海inset, 状态栏高度) 的恒定值, 与系统栏显隐解耦,
+   * 避免 select 弹窗等场景注入瞬态大值后卡住。
    */
   @PluginMethod
   public void safeInsets(PluginCall call) {
-    Insets safe = ViewCompat.getRootWindowInsets(getBridge().getWebView())
-        .getInsets(WindowInsetsCompat.Type.displayCutout()
-            | WindowInsetsCompat.Type.systemBars());
+    Insets cut = ViewCompat.getRootWindowInsets(getBridge().getWebView())
+        .getInsets(WindowInsetsCompat.Type.displayCutout());
     JSObject ret = new JSObject();
-    ret.put("top", safe.top);
-    ret.put("bottom", safe.bottom);
-    ret.put("left", safe.left);
-    ret.put("right", safe.right);
+    ret.put("top", Math.max(cut.top, MainActivity.getStatusBarHeight(getContext())));
+    ret.put("bottom", cut.bottom);
+    ret.put("left", cut.left);
+    ret.put("right", cut.right);
     call.resolve(ret);
   }
 

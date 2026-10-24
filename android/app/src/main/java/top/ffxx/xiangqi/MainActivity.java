@@ -53,7 +53,12 @@ public class MainActivity extends BridgeActivity {
    * 安全区适配 (edge-to-edge):
    * WebView 铺满全屏(内容延伸进刘海/系统栏区域), 保证网页内 fixed 定位的
    * 弹窗/toast 能覆盖整屏; 安全区数值通过 CSS 变量 --safe-top/bottom/left/right
-   * 注入网页, 由页面自行做内容避让。滑动呼出系统栏时变量随 insets 实时更新。
+   * 注入网页, 由页面自行做内容避让。
+   *
+   * 注意: 顶部避让量必须是恒定值 — 取 max(刘海inset, 系统状态栏高度),
+   * 不能跟随 systemBars insets 变化。否则 select 弹窗等场景系统栏短暂
+   * 现身时注入大值, 而瞬态系统栏(TRANSIENT)隐藏时不会再派发 insets,
+   * 大值会永久卡住, 造成"切换难度后顶部距离突然变大"。
    */
   private void setupSafeArea() {
     // 允许内容延伸到刘海两侧(短边全屏)
@@ -65,24 +70,28 @@ public class MainActivity extends BridgeActivity {
     }
     ViewGroup content = findViewById(android.R.id.content);
     ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
-      Insets safe = insets.getInsets(
-          WindowInsetsCompat.Type.displayCutout()
-              | WindowInsetsCompat.Type.systemBars());
-      injectSafeArea(safe);
+      Insets cut = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+      injectSafeArea(Math.max(cut.top, getStatusBarHeight(this)), cut.bottom, cut.left, cut.right);
       return WindowInsetsCompat.CONSUMED;
     });
     ViewCompat.requestApplyInsets(content);
   }
 
-  /** 把安全区数值写入网页 CSS 变量 */
-  private void injectSafeArea(Insets safe) {
+  /** 系统状态栏高度(资源值), 与系统栏显隐无关的常量 */
+  public static int getStatusBarHeight(android.content.Context ctx) {
+    int resId = ctx.getResources().getIdentifier("status_bar_height", "dimen", "android");
+    return resId > 0 ? ctx.getResources().getDimensionPixelSize(resId) : 0;
+  }
+
+  /** 把安全区数值写入网页 CSS 变量 (top 为恒定避让量, 不随系统栏显隐变化) */
+  private void injectSafeArea(int top, int bottom, int left, int right) {
     if (bridge == null || bridge.getWebView() == null) return;
     final String js = String.format(
         "document.documentElement.style.setProperty('--safe-top','%dpx');"
             + "document.documentElement.style.setProperty('--safe-bottom','%dpx');"
             + "document.documentElement.style.setProperty('--safe-left','%dpx');"
             + "document.documentElement.style.setProperty('--safe-right','%dpx');",
-        safe.top, safe.bottom, safe.left, safe.right);
+        top, bottom, left, right);
     bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
   }
 

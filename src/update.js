@@ -8,8 +8,8 @@ import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
 export const AppInstaller = registerPlugin('AppInstaller')
 
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.7'
-export const APP_BUILD = 8
+export const APP_VERSION = '1.0.8'
+export const APP_BUILD = 9
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
 const FIRST_DELAY = 3000                  // 启动后首次检查延迟
