@@ -2,27 +2,45 @@
 // 用法: startUpdateWatcher(info => { ... }) — 启动 3 秒后检查一次, 之后每 3 小时一次
 // ⚠️ 每次发版必须同步修改 APP_VERSION / APP_BUILD 和 android/app/build.gradle 的 versionName/versionCode
 
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
+
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.2'
-export const APP_BUILD = 3
+export const APP_VERSION = '1.0.3'
+export const APP_BUILD = 4
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
 const FIRST_DELAY = 3000                  // 启动后首次检查延迟
 
+const PARAMS = {
+  app: 'xiangqi',
+  platform: 'android',
+  packageName: 'top.ffxx.xiangqi',
+  channel: 'stable',
+  arch: 'universal',
+}
+
 export async function checkForUpdate() {
   try {
-    const q = new URLSearchParams({
-      app: 'xiangqi',
-      platform: 'android',
-      packageName: 'top.ffxx.xiangqi',
-      channel: 'stable',
-      build: String(APP_BUILD),
-      arch: 'universal',
-    })
-    const res = await fetch(`${UPDATE_SERVER}/api/v1/updates/check?${q}`)
-    if (!res.ok) return null
-    const d = await res.json()
-    if (!d.updateAvailable) return null
+    const url = `${UPDATE_SERVER}/api/v1/updates/check`
+    let d
+    if (Capacitor.isNativePlatform()) {
+      // 原生环境走 Capacitor 原生 HTTP, 不受 WebView CORS 限制
+      // (该接口无 Access-Control-Allow-Origin 头, WebView 内 fetch 会被 CORS 拦截)
+      const res = await CapacitorHttp.get({
+        url,
+        params: { ...PARAMS, build: String(APP_BUILD) },
+        readTimeout: 10000,
+        connectTimeout: 10000,
+      })
+      d = res.data
+      if (typeof d === 'string') d = JSON.parse(d)
+    } else {
+      // 浏览器环境 (跨域时可能因无 CORS 头而失败)
+      const res = await fetch(`${url}?${new URLSearchParams({ ...PARAMS, build: String(APP_BUILD) })}`)
+      if (!res.ok) return null
+      d = await res.json()
+    }
+    if (!d || !d.updateAvailable) return null
     const a = (d.artifacts || [])[0]
     return {
       version: d.version,

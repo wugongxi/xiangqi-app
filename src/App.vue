@@ -9,7 +9,7 @@ import {
 } from './game/xiangqi.js'
 import { moveToNotation } from './game/notation.js'
 import { LEVELS, buildLevelBoard, loadProgress, saveProgress } from './game/levels.js'
-import { APP_VERSION, APP_BUILD, startUpdateWatcher } from './update.js'
+import { APP_VERSION, APP_BUILD, startUpdateWatcher, checkForUpdate } from './update.js'
 
 // ---------- 顶层模式 ----------
 const mode = ref('menu') // menu | free | levels
@@ -63,6 +63,25 @@ async function applyUpdate() {
     window.open(info.url, '_blank')
   } finally {
     setTimeout(() => { updateLoading.value = false }, 800)
+  }
+}
+
+const manualChecking = ref(false)
+const checkResultText = ref('')
+let checkResultTimer = 0
+
+async function manualCheck() {
+  if (manualChecking.value) return
+  manualChecking.value = true
+  checkResultText.value = ''
+  const info = await checkForUpdate()
+  manualChecking.value = false
+  if (info) {
+    onUpdateFound(info)
+  } else {
+    checkResultText.value = '已是最新版本'
+    clearTimeout(checkResultTimer)
+    checkResultTimer = setTimeout(() => { checkResultText.value = '' }, 3000)
   }
 }
 
@@ -430,6 +449,7 @@ onBeforeUnmount(() => {
   stopThinkTimer()
   if (worker) worker.terminate()
   if (stopUpdateWatch) stopUpdateWatch()
+  clearTimeout(checkResultTimer)
 })
 </script>
 
@@ -442,6 +462,12 @@ onBeforeUnmount(() => {
       <button class="menu-btn primary" @click="startFree">自由对弈</button>
       <button class="menu-btn" @click="mode = 'levels'">残局闯关</button>
       <p class="menu-hint">上局对弈已自动存档，进入自由对弈可续玩</p>
+      <div class="menu-footer">
+        <span class="menu-version">v{{ APP_VERSION }}</span>
+        <button class="menu-check" :disabled="manualChecking" @click="manualCheck">
+          {{ manualChecking ? '检查中…' : checkResultText || '检查更新' }}
+        </button>
+      </div>
     </div>
 
     <!-- 关卡选择 -->
@@ -542,24 +568,24 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </transition>
+    </template>
 
-      <!-- 应用内更新弹窗 -->
-      <transition name="fade">
-        <div v-if="updateVisible && updateInfo" class="overlay" @click.self="dismissUpdate">
-          <div class="modal update-modal">
-            <div class="update-badge">🎉 发现新版本</div>
-            <div class="modal-title">v{{ updateInfo.version }}</div>
-            <div class="update-meta">当前 v{{ APP_VERSION }} (build {{ APP_BUILD }}) · 新版本 build {{ updateInfo.build }}<template v-if="updateInfo.size"> · {{ (updateInfo.size / 1024 / 1024).toFixed(1) }} MB</template></div>
-            <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
-            <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
-            <div class="modal-actions">
-              <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
-              <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
-            </div>
+    <!-- 应用内更新弹窗 (根级: 菜单/对局/关卡页均可弹出) -->
+    <transition name="fade">
+      <div v-if="updateVisible && updateInfo" class="overlay" @click.self="dismissUpdate">
+        <div class="modal update-modal">
+          <div class="update-badge">🎉 发现新版本</div>
+          <div class="modal-title">v{{ updateInfo.version }}</div>
+          <div class="update-meta">当前 v{{ APP_VERSION }} (build {{ APP_BUILD }}) · 新版本 build {{ updateInfo.build }}<template v-if="updateInfo.size"> · {{ (updateInfo.size / 1024 / 1024).toFixed(1) }} MB</template></div>
+          <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
+          <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
+          <div class="modal-actions">
+            <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
+            <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
           </div>
         </div>
-      </transition>
-    </template>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -600,6 +626,17 @@ onBeforeUnmount(() => {
 .menu-btn.primary { background: #8b2f23; border-color: #8b2f23; color: #fff; }
 .menu-btn.primary:hover { background: #a03a2c; color: #fff; }
 .menu-hint { margin-top: 22px; font-size: 12px; color: #bbb; }
+.menu-footer {
+  margin-top: 14px; display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: #999;
+}
+.menu-version { letter-spacing: 0.5px; }
+.menu-check {
+  border: none; background: rgba(0, 0, 0, 0.06); color: #8a7a5c;
+  font-size: 12px; padding: 4px 10px; border-radius: 12px; cursor: pointer;
+}
+.menu-check:active { background: rgba(0, 0, 0, 0.12); }
+.menu-check:disabled { opacity: 0.6; cursor: default; }
 
 /* 顶栏 */
 .topbar {
