@@ -50,12 +50,13 @@ public class MainActivity extends BridgeActivity {
   }
 
   /**
-   * 安全区适配: 沉浸式全屏下内容会延伸进刘海/状态栏区域,
-   * 监听系统 insets, 把顶部(刘海+状态栏)与左右安全边距注入 WebView 容器,
-   * 保证菜单与按钮不被摄像头打孔/刘海遮挡。滑动呼出系统栏时边距随之变化。
+   * 安全区适配 (edge-to-edge):
+   * WebView 铺满全屏(内容延伸进刘海/系统栏区域), 保证网页内 fixed 定位的
+   * 弹窗/toast 能覆盖整屏; 安全区数值通过 CSS 变量 --safe-top/bottom/left/right
+   * 注入网页, 由页面自行做内容避让。滑动呼出系统栏时变量随 insets 实时更新。
    */
   private void setupSafeArea() {
-    // 允许内容延伸到刘海两侧(短边全屏), 再用 insets 补偿
+    // 允许内容延伸到刘海两侧(短边全屏)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
       WindowManager.LayoutParams lp = getWindow().getAttributes();
       lp.layoutInDisplayCutoutMode =
@@ -67,11 +68,22 @@ public class MainActivity extends BridgeActivity {
       Insets safe = insets.getInsets(
           WindowInsetsCompat.Type.displayCutout()
               | WindowInsetsCompat.Type.systemBars());
-      v.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+      injectSafeArea(safe);
       return WindowInsetsCompat.CONSUMED;
     });
-    // 首次布局前也应用一次当前 insets, 避免首帧闪烁
     ViewCompat.requestApplyInsets(content);
+  }
+
+  /** 把安全区数值写入网页 CSS 变量 */
+  private void injectSafeArea(Insets safe) {
+    if (bridge == null || bridge.getWebView() == null) return;
+    final String js = String.format(
+        "document.documentElement.style.setProperty('--safe-top','%dpx');"
+            + "document.documentElement.style.setProperty('--safe-bottom','%dpx');"
+            + "document.documentElement.style.setProperty('--safe-left','%dpx');"
+            + "document.documentElement.style.setProperty('--safe-right','%dpx');",
+        safe.top, safe.bottom, safe.left, safe.right);
+    bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
   }
 
   /**

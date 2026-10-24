@@ -2,6 +2,9 @@ package top.ffxx.xiangqi;
 
 import android.content.Intent;
 import android.net.Uri;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -39,6 +42,23 @@ public class AppInstallerPlugin extends Plugin {
         call.reject("download/install failed: " + e.getMessage());
       }
     }).start();
+  }
+
+  /**
+   * 返回当前窗口安全区 (px), 供网页加载后主动获取一次,
+   * 与 MainActivity 的 CSS 变量注入双保险。
+   */
+  @PluginMethod
+  public void safeInsets(PluginCall call) {
+    Insets safe = ViewCompat.getRootWindowInsets(getBridge().getWebView())
+        .getInsets(WindowInsetsCompat.Type.displayCutout()
+            | WindowInsetsCompat.Type.systemBars());
+    JSObject ret = new JSObject();
+    ret.put("top", safe.top);
+    ret.put("bottom", safe.bottom);
+    ret.put("left", safe.left);
+    ret.put("right", safe.right);
+    call.resolve(ret);
   }
 
   private File download(String urlStr) throws Exception {

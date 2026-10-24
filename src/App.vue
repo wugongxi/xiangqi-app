@@ -451,7 +451,7 @@ function tryRestore() {
   } catch (e) { return false }
 }
 
-onMounted(() => {
+onMounted(async () => {
   worker = new Worker(new URL('./game/aiWorker.js', import.meta.url), { type: 'module' })
   worker.onmessage = onWorkerMessage
   worker.onerror = onWorkerError
@@ -465,6 +465,15 @@ onMounted(() => {
     AppInstaller.addListener('progress', (e) => {
       downloadProgress.value = e?.progress ?? 0
     })
+    // 页面加载后主动取一次安全区写入 CSS 变量 (与原生注入双保险)
+    try {
+      const s = await AppInstaller.safeInsets()
+      const root = document.documentElement.style
+      root.setProperty('--safe-top', (s.top ?? 0) + 'px')
+      root.setProperty('--safe-bottom', (s.bottom ?? 0) + 'px')
+      root.setProperty('--safe-left', (s.left ?? 0) + 'px')
+      root.setProperty('--safe-right', (s.right ?? 0) + 'px')
+    } catch (e) { /* 忽略 */ }
   }
 })
 onBeforeUnmount(() => {
@@ -628,7 +637,13 @@ onBeforeUnmount(() => {
   align-items: center;
   max-width: 620px;
   margin: 0 auto;
-  padding: 12px 16px 24px;
+  /* 安全区避让: WebView 全屏铺满, 内容通过安全区变量避让刘海/系统栏;
+     --safe-* 由原生注入, env() 兜底 (浏览器/未注入时) */
+  padding:
+    calc(12px + max(var(--safe-top, 0px), env(safe-area-inset-top, 0px)))
+    max(16px, max(var(--safe-right, 0px), env(safe-area-inset-right, 0px)))
+    calc(24px + max(var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))
+    max(16px, max(var(--safe-left, 0px), env(safe-area-inset-left, 0px)));
 }
 /* 菜单 */
 .menu { padding-top: 18vh; text-align: center; width: 100%; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; padding-bottom: 26px; }
