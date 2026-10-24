@@ -72,7 +72,7 @@ async function applyUpdate() {
     showToast('下载完成，已启动安装', 3000)
   } catch (e) {
     console.error('[Update] 应用内下载失败, 退回浏览器:', e)
-    showToast('应用内下载失败，改用浏览器下载')
+    showToast(`应用内下载失败：${e?.message || '未知错误'}，改用浏览器下载`, 4000)
     window.open(info.url, '_blank')
   } finally {
     setTimeout(() => {

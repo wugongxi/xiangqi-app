@@ -17,8 +17,10 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
+    // ⚠️ 必须在 super.onCreate() 之前注册: Bridge 在 super.onCreate 中初始化并装载
+    // 插件列表, 之后注册的插件 JS 侧会报 "not implemented" (曾导致更新退回浏览器下载)
     registerPlugin(AppInstallerPlugin.class);
+    super.onCreate(savedInstanceState);
     applyThemeColors();
     setupSafeArea();
     hideSystemBars();
