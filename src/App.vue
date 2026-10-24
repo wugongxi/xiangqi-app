@@ -9,6 +9,7 @@ import {
 } from './game/xiangqi.js'
 import { moveToNotation } from './game/notation.js'
 import { LEVELS, buildLevelBoard, loadProgress, saveProgress } from './game/levels.js'
+import { APP_VERSION, APP_BUILD, startUpdateWatcher } from './update.js'
 
 // ---------- 顶层模式 ----------
 const mode = ref('menu') // menu | free | levels
@@ -36,6 +37,34 @@ let watchdog = 0
 let searchSeq = 0                // 搜索请求序号: 丢弃过期/重复结果
 const thinkElapsed = ref(0)
 let initialArr = initialBoard()   // 复盘回放起点
+let stopUpdateWatch = null
+
+// ---------- 应用内更新 ----------
+const updateInfo = ref(null)      // {version, build, notes, forceUpdate, url, size}
+const updateVisible = ref(false)
+const updateLoading = ref(false)
+
+function onUpdateFound(info) {
+  updateInfo.value = info
+  updateVisible.value = true
+}
+
+function dismissUpdate() {
+  if (updateInfo.value?.forceUpdate) return // 强制更新不可关闭
+  updateVisible.value = false
+}
+
+async function applyUpdate() {
+  const info = updateInfo.value
+  if (!info?.url) return
+  updateLoading.value = true
+  try {
+    // 打开系统浏览器下载 APK, 用户点击安装即可
+    window.open(info.url, '_blank')
+  } finally {
+    setTimeout(() => { updateLoading.value = false }, 800)
+  }
+}
 
 const playerTurn = computed(() => turn.value === playerSide.value && !gameOver.value && !reviewMode.value)
 const flipped = computed(() => playerSide.value === BLACK)
@@ -393,11 +422,14 @@ onMounted(() => {
   worker.onmessageerror = onWorkerError
   setupKingsAndHash(g)
   syncFromEngine()
+  // 启动 3 秒后自动检查更新, 之后每 3 小时一次
+  stopUpdateWatch = startUpdateWatcher(onUpdateFound)
 })
 onBeforeUnmount(() => {
   clearTimeout(checkTimer)
   stopThinkTimer()
   if (worker) worker.terminate()
+  if (stopUpdateWatch) stopUpdateWatch()
 })
 </script>
 
@@ -506,6 +538,23 @@ onBeforeUnmount(() => {
               <button v-if="mode === 'levels' && gameOver.win && currentLevel.id < LEVELS.length" class="btn primary" @click="nextLevel">下一关</button>
               <button class="btn" @click="mode === 'free' ? newGame(playerSide, difficulty) : startLevel(currentLevel)">再来一局</button>
               <button class="btn" @click="enterReview()">复盘</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- 应用内更新弹窗 -->
+      <transition name="fade">
+        <div v-if="updateVisible && updateInfo" class="overlay" @click.self="dismissUpdate">
+          <div class="modal update-modal">
+            <div class="update-badge">🎉 发现新版本</div>
+            <div class="modal-title">v{{ updateInfo.version }}</div>
+            <div class="update-meta">当前 v{{ APP_VERSION }} (build {{ APP_BUILD }}) · 新版本 build {{ updateInfo.build }}<template v-if="updateInfo.size"> · {{ (updateInfo.size / 1024 / 1024).toFixed(1) }} MB</template></div>
+            <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
+            <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
+            <div class="modal-actions">
+              <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
+              <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
             </div>
           </div>
         </div>
@@ -671,4 +720,20 @@ onBeforeUnmount(() => {
 .modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* 应用内更新弹窗 */
+.update-modal { max-width: 340px; }
+.update-badge {
+  display: inline-block; font-size: 12px; font-weight: 600; color: #fff;
+  background: linear-gradient(135deg, #e0533d, #d4380d); border-radius: 10px;
+  padding: 3px 12px; margin-bottom: 10px;
+}
+.update-meta { font-size: 13px; color: #888; margin-bottom: 12px; }
+.update-notes {
+  font-size: 14px; line-height: 1.7; color: #444; text-align: left;
+  background: #f8f4ea; border-radius: 10px; padding: 10px 14px;
+  margin-bottom: 14px; white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+}
+.update-force { font-size: 12px; color: #d4380d; margin-bottom: 12px; }
+.update-modal .btn:disabled { opacity: 0.6; cursor: default; }
 </style>
