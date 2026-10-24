@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    applyThemeColors();
     setupSafeArea();
     hideSystemBars();
   }
@@ -32,6 +33,17 @@ public class MainActivity extends BridgeActivity {
   public void onWindowFocusChanged(boolean hasFocus) {
     super.onWindowFocusChanged(hasFocus);
     if (hasFocus) hideSystemBars();
+  }
+
+  /**
+   * 主题色统一: 沉浸式全屏下安全区 padding 露出的是窗口背景,
+   * 系统默认白色会与 App 米黄底色割裂, 统一染成米黄色 (#f3dfb6)。
+   */
+  private void applyThemeColors() {
+    int bg = 0xFFF3DFB6;
+    getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(bg));
+    getWindow().setStatusBarColor(bg);
+    getWindow().setNavigationBarColor(bg);
   }
 
   /**

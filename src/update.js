@@ -5,8 +5,8 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 
 export const UPDATE_SERVER = 'https://app.ffxx.top'
-export const APP_VERSION = '1.0.3'
-export const APP_BUILD = 4
+export const APP_VERSION = '1.0.4'
+export const APP_BUILD = 5
 
 const CHECK_INTERVAL = 3 * 60 * 60 * 1000 // 3 小时
 const FIRST_DELAY = 3000                  // 启动后首次检查延迟

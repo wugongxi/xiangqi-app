@@ -67,22 +67,23 @@ async function applyUpdate() {
 }
 
 const manualChecking = ref(false)
-const checkResultText = ref('')
-let checkResultTimer = 0
+const toast = ref('')
+let toastTimer = 0
+
+function showToast(msg, ms = 2000) {
+  toast.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast.value = '' }, ms)
+}
 
 async function manualCheck() {
   if (manualChecking.value) return
   manualChecking.value = true
-  checkResultText.value = ''
+  showToast('正在检查更新…')
   const info = await checkForUpdate()
   manualChecking.value = false
-  if (info) {
-    onUpdateFound(info)
-  } else {
-    checkResultText.value = '已是最新版本'
-    clearTimeout(checkResultTimer)
-    checkResultTimer = setTimeout(() => { checkResultText.value = '' }, 3000)
-  }
+  if (info) onUpdateFound(info)
+  else showToast('已是最新版本')
 }
 
 const playerTurn = computed(() => turn.value === playerSide.value && !gameOver.value && !reviewMode.value)
@@ -449,7 +450,7 @@ onBeforeUnmount(() => {
   stopThinkTimer()
   if (worker) worker.terminate()
   if (stopUpdateWatch) stopUpdateWatch()
-  clearTimeout(checkResultTimer)
+  clearTimeout(toastTimer)
 })
 </script>
 
@@ -462,11 +463,8 @@ onBeforeUnmount(() => {
       <button class="menu-btn primary" @click="startFree">自由对弈</button>
       <button class="menu-btn" @click="mode = 'levels'">残局闯关</button>
       <p class="menu-hint">上局对弈已自动存档，进入自由对弈可续玩</p>
-      <div class="menu-footer">
+      <div class="menu-footer" @click="manualCheck" title="点击检查更新">
         <span class="menu-version">v{{ APP_VERSION }}</span>
-        <button class="menu-check" :disabled="manualChecking" @click="manualCheck">
-          {{ manualChecking ? '检查中…' : checkResultText || '检查更新' }}
-        </button>
       </div>
     </div>
 
@@ -574,17 +572,26 @@ onBeforeUnmount(() => {
     <transition name="fade">
       <div v-if="updateVisible && updateInfo" class="overlay" @click.self="dismissUpdate">
         <div class="modal update-modal">
-          <div class="update-badge">🎉 发现新版本</div>
-          <div class="modal-title">v{{ updateInfo.version }}</div>
-          <div class="update-meta">当前 v{{ APP_VERSION }} (build {{ APP_BUILD }}) · 新版本 build {{ updateInfo.build }}<template v-if="updateInfo.size"> · {{ (updateInfo.size / 1024 / 1024).toFixed(1) }} MB</template></div>
-          <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
-          <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
-          <div class="modal-actions">
-            <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
-            <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
+          <div class="update-header">
+            <div class="update-badge">🎉 发现新版本</div>
+            <div class="update-ver">v{{ updateInfo.version }}</div>
+            <div class="update-meta">当前 v{{ APP_VERSION }}<template v-if="updateInfo.size"> · {{ (updateInfo.size / 1024 / 1024).toFixed(1) }} MB</template></div>
+          </div>
+          <div class="update-body">
+            <div v-if="updateInfo.notes" class="update-notes">{{ updateInfo.notes }}</div>
+            <div class="update-force" v-if="updateInfo.forceUpdate">此版本为强制更新，需要升级后才能继续使用</div>
+            <div class="modal-actions">
+              <button class="btn primary" :disabled="updateLoading" @click="applyUpdate">{{ updateLoading ? '正在打开下载…' : '立即更新' }}</button>
+              <button v-if="!updateInfo.forceUpdate" class="btn" @click="dismissUpdate">暂不更新</button>
+            </div>
           </div>
         </div>
       </div>
+    </transition>
+
+    <!-- 全局 toast -->
+    <transition name="fade">
+      <div v-if="toast" class="toast">{{ toast }}</div>
     </transition>
   </div>
 </template>
@@ -600,7 +607,7 @@ onBeforeUnmount(() => {
   padding: 12px 16px 24px;
 }
 /* 菜单 */
-.menu { padding-top: 18vh; text-align: center; width: 100%; }
+.menu { padding-top: 18vh; text-align: center; width: 100%; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; padding-bottom: 26px; }
 .menu-title {
   font-size: 44px;
   font-family: "KaiTi", "STKaiti", serif;
@@ -627,16 +634,15 @@ onBeforeUnmount(() => {
 .menu-btn.primary:hover { background: #a03a2c; color: #fff; }
 .menu-hint { margin-top: 22px; font-size: 12px; color: #bbb; }
 .menu-footer {
-  margin-top: 14px; display: flex; align-items: center; gap: 12px;
-  font-size: 12px; color: #999;
+  margin-top: auto; padding-top: 20px;
+  display: flex; justify-content: center;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.menu-version { letter-spacing: 0.5px; }
-.menu-check {
-  border: none; background: rgba(0, 0, 0, 0.06); color: #8a7a5c;
-  font-size: 12px; padding: 4px 10px; border-radius: 12px; cursor: pointer;
+.menu-version {
+  letter-spacing: 0.5px; font-size: 12px; color: #b3a98f;
+  padding: 6px 14px; border-radius: 14px; transition: background 0.2s;
 }
-.menu-check:active { background: rgba(0, 0, 0, 0.12); }
-.menu-check:disabled { opacity: 0.6; cursor: default; }
+.menu-footer:active .menu-version { background: rgba(0, 0, 0, 0.07); color: #8b2f23; }
 
 /* 顶栏 */
 .topbar {
@@ -759,18 +765,32 @@ onBeforeUnmount(() => {
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
 /* 应用内更新弹窗 */
-.update-modal { max-width: 340px; }
+.update-modal { max-width: 340px; padding: 0; overflow: hidden; border-radius: 18px; }
+.update-header {
+  background: linear-gradient(135deg, #8b2f23, #a03a2c);
+  color: #fff; text-align: center; padding: 20px 20px 16px;
+}
 .update-badge {
-  display: inline-block; font-size: 12px; font-weight: 600; color: #fff;
-  background: linear-gradient(135deg, #e0533d, #d4380d); border-radius: 10px;
-  padding: 3px 12px; margin-bottom: 10px;
+  display: inline-block; font-size: 12px; font-weight: 600; color: #8b2f23;
+  background: #f7e9c5; border-radius: 10px;
+  padding: 3px 12px; margin-bottom: 8px;
 }
-.update-meta { font-size: 13px; color: #888; margin-bottom: 12px; }
+.update-ver { font-size: 26px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; }
+.update-meta { font-size: 12px; color: rgba(255, 255, 255, 0.75); }
+.update-body { padding: 16px 20px 20px; }
 .update-notes {
-  font-size: 14px; line-height: 1.7; color: #444; text-align: left;
-  background: #f8f4ea; border-radius: 10px; padding: 10px 14px;
-  margin-bottom: 14px; white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+  font-size: 14px; line-height: 1.7; color: #55432e; text-align: left;
+  background: #f8f0dc; border-radius: 10px; padding: 10px 14px;
+  margin-bottom: 14px; white-space: pre-wrap; max-height: 160px; overflow-y: auto;
 }
-.update-force { font-size: 12px; color: #d4380d; margin-bottom: 12px; }
+.update-force { font-size: 12px; color: #d4380d; text-align: center; margin-bottom: 12px; }
 .update-modal .btn:disabled { opacity: 0.6; cursor: default; }
+
+/* 全局 toast */
+.toast {
+  position: fixed; left: 50%; bottom: 12%; transform: translateX(-50%);
+  background: rgba(40, 32, 22, 0.88); color: #fff; font-size: 14px;
+  padding: 10px 22px; border-radius: 22px; pointer-events: none;
+  z-index: 999; white-space: nowrap;
+}
 </style>
